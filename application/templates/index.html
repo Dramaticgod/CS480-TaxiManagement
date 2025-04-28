@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taxi Rental Management System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+</head>
+<body>
+  <header class="header">
+    <h1>Taxi Rental Management System</h1>
+  </header>
+  
+  <div class="container">
+    <section class="hero">
+      <h2>Welcome to our Taxi Rental Platform</h2>
+      <p>Streamline your taxi rental operations with our comprehensive management system. Whether you're a manager, client, or driver, we've got you covered.</p>
+    </section>
+    
+    <section class="roles">
+      <div class="role-card" onclick="openModal('manager-modal')">
+        <div class="icon manager-icon"></div>
+        <h3>Manager</h3>
+        <p>Manage drivers, cars, and access detailed statistics about your rental operations.</p>
+        <a href="#" class="btn" onclick="openModal('manager-modal'); return false;">Login as Manager</a>
+      </div>
+      
+      <div class="role-card" onclick="openModal('client-modal')">
+        <div class="icon client-icon"></div>
+        <h3>Client</h3>
+        <p>Book rides, manage your account, and provide feedback on your rental experiences.</p>
+        <a href="#" class="btn client-btn" onclick="openModal('client-modal'); return false;">Login as Client</a>
+      </div>
+      
+      <div class="role-card" onclick="openModal('driver-modal')">
+        <div class="icon driver-icon"></div>
+        <h3>Driver</h3>
+        <p>Update your profile, see car models, and manage what vehicles you can drive.</p>
+        <a href="#" class="btn driver-btn" onclick="openModal('driver-modal'); return false;">Login as Driver</a>
+      </div>
+    </section>
+  </div>
+  
+  <footer class="footer">
+    <p>&copy; 2025 Taxi Rental Management System - CS480 Database Systems Project</p>
+  </footer>
+  
+  <!-- Manager Modal -->
+  <div id="manager-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('manager-modal')">&times;</button>
+      <h3>Manager Login</h3>
+      <form id="manager-form" onsubmit="handleLogin('manager'); return false;">
+        <div class="form-group">
+          <label for="manager-ssn">SSN</label>
+          <input type="text" id="manager-ssn" required placeholder="Enter your SSN">
+        </div>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+      <a href="#" class="register-link" onclick="showRegistration('manager'); return false;">New manager? Register here</a>
+    </div>
+  </div>
+  
+  <!-- Client Modal -->
+  <div id="client-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('client-modal')">&times;</button>
+      <h3>Client Login</h3>
+      <form id="client-form" onsubmit="handleLogin('client'); return false;">
+        <div class="form-group">
+          <label for="client-email">Email</label>
+          <input type="email" id="client-email" required placeholder="Enter your email">
+        </div>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+      <a href="#" class="register-link" onclick="showRegistration('client'); return false;">New client? Register here</a>
+    </div>
+  </div>
+  
+  <!-- Driver Modal -->
+  <div id="driver-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('driver-modal')">&times;</button>
+      <h3>Driver Login</h3>
+      <form id="driver-form" onsubmit="handleLogin('driver'); return false;">
+        <div class="form-group">
+          <label for="driver-name">Name</label>
+          <input type="text" id="driver-name" required placeholder="Enter your name">
+        </div>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Notification -->
+  <div id="notification" class="notification">
+    Notification message
+  </div>
+  
+  <script>
+    // Modal functionality
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+    
+    
+    window.addEventListener('click', function(event) {
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => {
+        if (event.target === modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = 'auto';
+        }
+      });
+    });
+    
+    // Loading spinner
+    function showLoading() {
+      document.getElementById('loading').classList.add('active');
+    }
+    
+    function hideLoading() {
+      document.getElementById('loading').classList.remove('active');
+    }
+    
+    // Notification system
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      
+      if (isError) {
+        notification.classList.add('error');
+      } else {
+        notification.classList.remove('error');
+      }
+      
+      notification.classList.add('active');
+      
+      setTimeout(() => {
+        notification.classList.remove('active');
+      }, 3000);
+    }
+    
+    // Login handler
+    function handleLogin(role) {
+        showLoading();
+        
+        let formData = new FormData();
+        let endpoint = '';
+        
+        if (role === 'manager') {
+            const ssn = document.getElementById('manager-ssn').value;
+            formData.append('ssn', ssn);
+            endpoint = '/manager/login';
+        } else if (role === 'client') {
+            const email = document.getElementById('client-email').value;
+            formData.append('email', email);
+            endpoint = '/client/login';
+        } else if (role === 'driver') {
+            const name = document.getElementById('driver-name').value;
+            formData.append('name', name);
+            endpoint = '/driver/login';
+        }
+        
+        // Add CSRF token to the form data
+        formData.append('csrf_token', getCSRFToken());
+        
+        fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                showNotification(`${role.charAt(0).toUpperCase() + role.slice(1)} login successful!`);
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1000);
+            } else {
+                showNotification(data.message || 'Login failed. Please check your credentials.', true);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showNotification('An error occurred during login. Please try again.', true);
+            console.error('Error:', error);
+        });
+    }
+  </script>
+</body>
+</html>
