@@ -68,15 +68,21 @@ def home():
 def manager_login():
     if request.method == 'POST':
         ssn = request.form.get('ssn')
+
+        print(f"SSN: {ssn}")  # Debugging line to check the SSN value   
         
         if not ssn:
             return jsonify({'success': False, 'message': 'SSN is required'}), 400
             
         manager = Manager.query.get(ssn)
+
+        # print(manager)
+        # print("got past manager query")  
         
         if manager:
             # Create a User object and log in
             user = User(manager.SSN, 'manager', manager)
+
             login_user(user)
             return jsonify({'success': True, 'redirect': url_for('manager_dashboard')})
         else:

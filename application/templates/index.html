@@ -52,14 +52,16 @@
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal('manager-modal')">&times;</button>
       <h3>Manager Login</h3>
-      <form id="manager-form" onsubmit="handleLogin('manager'); return false;">
+      <form id="manager-form" action="/manager/login" method="POST">
         <div class="form-group">
           <label for="manager-ssn">SSN</label>
-          <input type="text" id="manager-ssn" required placeholder="Enter your SSN">
+          <input type="text" id="manager-ssn" name="ssn" required placeholder="Enter your SSN">
         </div>
+        <!-- Add CSRF token -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-login">Login</button>
       </form>
-      <a href="#" class="register-link" onclick="showRegistration('manager'); return false;">New manager? Register here</a>
+      <a href="/manager/register" class="register-link">New manager? Register here</a>
     </div>
   </div>
   
@@ -68,14 +70,16 @@
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal('client-modal')">&times;</button>
       <h3>Client Login</h3>
-      <form id="client-form" onsubmit="handleLogin('client'); return false;">
+      <form id="client-form" action="/client/login" method="POST">
         <div class="form-group">
           <label for="client-email">Email</label>
-          <input type="email" id="client-email" required placeholder="Enter your email">
+          <input type="email" id="client-email" name="email" required placeholder="Enter your email">
         </div>
+        <!-- Add CSRF token -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-login">Login</button>
       </form>
-      <a href="#" class="register-link" onclick="showRegistration('client'); return false;">New client? Register here</a>
+      <a href="/client/register" class="register-link">New client? Register here</a>
     </div>
   </div>
   
@@ -84,11 +88,13 @@
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal('driver-modal')">&times;</button>
       <h3>Driver Login</h3>
-      <form id="driver-form" onsubmit="handleLogin('driver'); return false;">
+      <form id="driver-form" action="/driver/login" method="POST">
         <div class="form-group">
           <label for="driver-name">Name</label>
-          <input type="text" id="driver-name" required placeholder="Enter your name">
+          <input type="text" id="driver-name" name="name" required placeholder="Enter your name">
         </div>
+        <!-- Add CSRF token -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-login">Login</button>
       </form>
     </div>
@@ -105,6 +111,11 @@
   </div>
   
   <script>
+    // Function to get CSRF token from meta tag
+    function getCSRFToken() {
+      return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+    
     // Modal functionality
     function openModal(modalId) {
       document.getElementById(modalId).classList.add('active');
@@ -116,7 +127,7 @@
       document.body.style.overflow = 'auto';
     }
     
-    
+    // Close modal if clicked outside of content
     window.addEventListener('click', function(event) {
       const modals = document.querySelectorAll('.modal');
       modals.forEach(modal => {
@@ -154,57 +165,94 @@
       }, 3000);
     }
     
-    // Login handler
-    function handleLogin(role) {
-        showLoading();
-        
-        let formData = new FormData();
-        let endpoint = '';
-        
-        if (role === 'manager') {
-            const ssn = document.getElementById('manager-ssn').value;
-            formData.append('ssn', ssn);
-            endpoint = '/manager/login';
-        } else if (role === 'client') {
-            const email = document.getElementById('client-email').value;
-            formData.append('email', email);
-            endpoint = '/client/login';
-        } else if (role === 'driver') {
-            const name = document.getElementById('driver-name').value;
-            formData.append('name', name);
-            endpoint = '/driver/login';
+    // Set up form submission with AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+      // Manager form submission
+      document.getElementById('manager-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitForm('manager');
+      });
+      
+      // Client form submission
+      document.getElementById('client-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitForm('client');
+      });
+      
+      // Driver form submission
+      document.getElementById('driver-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitForm('driver');
+      });
+    });
+    
+    // Form submission handler
+    function submitForm(role) {
+      showLoading();
+      
+      let form;
+      let endpoint;
+      
+      if (role === 'manager') {
+        form = document.getElementById('manager-form');
+        endpoint = '/manager/login';
+      } else if (role === 'client') {
+        form = document.getElementById('client-form');
+        endpoint = '/client/login';
+      } else if (role === 'driver') {
+        form = document.getElementById('driver-form');
+        endpoint = '/driver/login';
+      }
+      
+      // Create form data from the form
+      const formData = new FormData(form);
+      
+      // Send POST request
+      fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        },
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Login failed');
         }
+        return response.json();
+      })
+      .then(data => {
+        hideLoading();
         
-        // Add CSRF token to the form data
-        formData.append('csrf_token', getCSRFToken());
-        
-        fetch(endpoint, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': getCSRFToken()
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            
-            if (data.success) {
-                showNotification(`${role.charAt(0).toUpperCase() + role.slice(1)} login successful!`);
-                setTimeout(() => {
-                    window.location.href = data.redirect;
-                }, 1000);
-            } else {
-                showNotification(data.message || 'Login failed. Please check your credentials.', true);
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            showNotification('An error occurred during login. Please try again.', true);
-            console.error('Error:', error);
-        });
+        if (data.success) {
+          showNotification(`${role.charAt(0).toUpperCase() + role.slice(1)} login successful!`);
+          setTimeout(() => {
+            window.location.href = data.redirect;
+          }, 1000);
+        } else {
+          showNotification(data.message || 'Login failed. Please check your credentials.', true);
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showNotification('An error occurred during login. Please try again.', true);
+        console.error('Error:', error);
+      });
     }
+    
+    // Flash messages (if they exist)
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if there are any flash messages from Flask
+      const flashMessages = document.querySelectorAll('.flash-message');
+      
+      if (flashMessages.length > 0) {
+        flashMessages.forEach(message => {
+          const isError = message.classList.contains('flash-error');
+          showNotification(message.textContent, isError);
+        });
+      }
+    });
   </script>
 </body>
 </html>
