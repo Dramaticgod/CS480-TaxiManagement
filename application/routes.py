@@ -20,14 +20,14 @@ def validate_session():
                 logout_user()
                 session.clear()
                 flash('Session invalid. Please login again.', 'warning')
-                return redirect(url_for('login'))
+                return redirect(url_for('home'))
             
             # Verify user match
             if session.get('user_id') != current_user.id:
                 logout_user()
                 session.clear()
                 flash('Session mismatch. Please login again.', 'warning')
-                return redirect(url_for('login'))
+                return redirect(url_for('home'))
             
             # Check session age
             login_timestamp = session.get('login_time', 0)
@@ -37,14 +37,14 @@ def validate_session():
                 logout_user()
                 session.clear()
                 flash('Session expired. Please login again.', 'warning')
-                return redirect(url_for('login'))
+                return redirect(url_for('home'))
                 
         except Exception as e:
             app.logger.error(f"Session validation error: {str(e)}")
             logout_user()
             session.clear()
             flash('Session error. Please login again.', 'danger')
-            return redirect(url_for('login'))
+            return redirect(url_for('home'))
         
 @app.route('/')
 def home():
@@ -69,10 +69,10 @@ def manager_login():
     if request.method == 'POST':
         ssn = request.form.get('ssn')
 
-        print(f"SSN: {ssn}")  # Debugging line to check the SSN value   
+        # print(f"SSN: {ssn}")  # Debugging line to check the SSN value   
         
         if not ssn:
-            return jsonify({'success': False, 'message': 'SSN is required'}), 400
+            return jsonify({'success': False, 'message': 'SSN is required'})
             
         manager = Manager.query.get(ssn)
 
@@ -86,7 +86,7 @@ def manager_login():
             login_user(user)
             return jsonify({'success': True, 'redirect': url_for('manager_dashboard')})
         else:
-            return jsonify({'success': False, 'message': 'Invalid SSN'}), 401
+            return jsonify({'success': False, 'message': 'Invalid credentials. Please try again.'})
     
     return jsonify({'success': False, 'message': 'Method not allowed'}), 405
 
@@ -97,7 +97,7 @@ def client_login():
         email = request.form.get('email')
         
         if not email:
-            return jsonify({'success': False, 'message': 'Email is required'}), 400
+            return jsonify({'success': False, 'message': 'Email is required'})
             
         client = Client.query.get(email)
         
@@ -107,7 +107,7 @@ def client_login():
             login_user(user)
             return jsonify({'success': True, 'redirect': url_for('client_dashboard')})
         else:
-            return jsonify({'success': False, 'message': 'Invalid email'}), 401
+            return jsonify({'success': False, 'message': 'Invalid credentials. Please try again.'})
     
     return jsonify({'success': False, 'message': 'Method not allowed'}), 405
 
@@ -128,7 +128,7 @@ def driver_login():
             login_user(user)
             return jsonify({'success': True, 'redirect': url_for('driver_dashboard')})
         else:
-            return jsonify({'success': False, 'message': 'Invalid name'}), 401
+            return jsonify({'success': False, 'message': 'Invalid credentials. Please try again.'})
     
     return jsonify({'success': False, 'message': 'Method not allowed'}), 405
 
@@ -153,7 +153,7 @@ def manager_register():
         try:
             db.session.commit()
             flash('Registration successful! Please log in.')
-            return redirect(url_for('index'))
+            return redirect(url_for('home'))
         except Exception as e:
             db.session.rollback()
             flash(f'Error during registration: {str(e)}')
@@ -179,7 +179,7 @@ def client_register():
         try:
             db.session.commit()
             flash('Registration successful! Please log in.')
-            return redirect(url_for('index'))
+            return redirect(url_for('home'))
         except Exception as e:
             db.session.rollback()
             flash(f'Error during registration: {str(e)}')
@@ -192,7 +192,7 @@ def client_register():
 def logout():
     logout_user()
     flash('You have been logged out.')
-    return redirect(url_for('index'))
+    return redirect(url_for('home'))
 
 # Dashboard routes for each user type
 @app.route('/manager/dashboard')
@@ -200,7 +200,7 @@ def logout():
 def manager_dashboard():
     if current_user.role != 'manager':
         flash('Access denied.')
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
     
     return render_template('manager_dashboard.html')
 
@@ -209,7 +209,7 @@ def manager_dashboard():
 def client_dashboard():
     if current_user.role != 'client':
         flash('Access denied.')
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
     
     return render_template('client_dashboard.html')
 
@@ -218,6 +218,6 @@ def client_dashboard():
 def driver_dashboard():
     if current_user.role != 'driver':
         flash('Access denied.')
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
     
     return render_template('driver_dashboard.html')

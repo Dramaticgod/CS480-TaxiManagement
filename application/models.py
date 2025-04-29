@@ -2,6 +2,7 @@ from flask import url_for, redirect
 from application import db, login_manager, ModelView, app
 from datetime import datetime
 from flask_login import UserMixin, current_user
+from flask_admin import Admin, AdminIndexView
 
 # Define a User class that combines all user types for login purposes
 class User(UserMixin):
@@ -163,3 +164,25 @@ class Review(db.Model):
     client_email = db.Column(db.String(100), db.ForeignKey('client.email'), nullable=False)
     rating = db.Column(db.Integer, db.CheckConstraint('rating BETWEEN 0 AND 5'))
     message = db.Column(db.Text)
+
+
+class AdminView(AdminIndexView):
+    def is_accessible(self):
+        return True
+        # return current_user.is_authenticated and current_user.role == 'manager'
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('home'))
+    
+admin = Admin(app, index_view=AdminView())
+admin.add_view(ModelView(Manager, db.session))
+admin.add_view(ModelView(Client, db.session))
+admin.add_view(ModelView(Driver, db.session))
+admin.add_view(ModelView(Address, db.session))
+admin.add_view(ModelView(Car, db.session))
+admin.add_view(ModelView(Model, db.session))
+admin.add_view(ModelView(Rent, db.session))
+admin.add_view(ModelView(Review, db.session))
+admin.add_view(ModelView(ClientAddress, db.session))
+admin.add_view(ModelView(CreditCard, db.session))
+admin.add_view(ModelView(DriverModel, db.session))

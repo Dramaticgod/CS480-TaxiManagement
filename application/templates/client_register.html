@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        .registration-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .btn-register {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Flash messages styling */
+        .flash-message {
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #856404;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+        }
+        
+        .flash-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Taxi Rental Management System</h1>
+    </header>
+    <div class="container">
+        <div class="registration-container">
+            <h2 class="form-title">Client Registration</h2>
+            
+            <!-- Flash Messages -->
+            {% if get_flashed_messages() %}
+            <div class="flash-messages">
+                {% for message in get_flashed_messages() %}
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('client_register') }}">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <button type="submit" class="btn btn-primary mt-4">Register</button>
+            </form>
+            
+            <a href="{{ url_for('home') }}" class="back-link">Back to Login</a>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <p>&copy; 2025 Taxi Rental Management System - CS480 Database Systems Project</p>
+    </footer>
+    
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        Notification message
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js">
+        // Function to get CSRF token from meta tag
+        function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        }
+        
+        // Loading spinner
+        function showLoading() {
+        document.getElementById('loading').classList.add('active');
+        }
+        
+        function hideLoading() {
+        document.getElementById('loading').classList.remove('active');
+        }
+        
+        // Notification system
+        function showNotification(message, isError = false) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        
+        if (isError) {
+            notification.classList.add('error');
+        } else {
+            notification.classList.remove('error');
+        }
+        
+        notification.classList.add('active');
+        
+        setTimeout(() => {
+            notification.classList.remove('active');
+        }, 3000);
+        }
+        
+        // Form submission
+        document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('manager-register-form').addEventListener('submit', function(e) {
+            showLoading();
+        });
+        
+        // Flash messages (if they exist)
+        const flashMessages = document.querySelectorAll('.flash-message');
+        
+        if (flashMessages.length > 0) {
+            flashMessages.forEach(message => {
+            const isError = message.classList.contains('flash-error');
+            showNotification(message.textContent, isError);
+            });
+        }
+        });
+    </script>
+</body>
+</html>

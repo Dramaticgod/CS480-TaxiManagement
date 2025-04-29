@@ -353,3 +353,18 @@
       font-size: 1.8rem;
     }
   }
+
+  .flash-message {
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+  }
+  
+  .flash-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+  }
