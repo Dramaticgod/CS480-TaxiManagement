@@ -1,5 +1,5 @@
 from flask import url_for, redirect
-from application import db, login_manager, ModelView, app
+from application import db, login_manager, ModelView, app, alembic
 from datetime import datetime
 from flask_login import UserMixin, current_user
 from flask_admin import Admin, AdminIndexView
@@ -186,3 +186,4 @@ admin.add_view(ModelView(Review, db.session))
 admin.add_view(ModelView(ClientAddress, db.session))
 admin.add_view(ModelView(CreditCard, db.session))
 admin.add_view(ModelView(DriverModel, db.session))
+
