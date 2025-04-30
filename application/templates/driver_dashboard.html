@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Dashboard - Taxi Rental Management System</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/driver_dashboard.css') }}">
+  <style>
+    
+  </style>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">
+        <h1>Taxi Rental Management System</h1>
+      </div>
+      <div class="user-info">
+        <div class="avatar">D</div>
+        <span class="user-name">{{ driver.name }}</span>
+        <form action="/logout" method="POST" style="display: inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="logout-btn">Logout</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard-header">
+      <h2 class="dashboard-title">Driver Dashboard</h2>
+    </div>
+
+    <div class="dashboard-cards">
+      <!-- Address Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Your Address</h3>
+          <span class="card-icon">📍</span>
+        </div>
+        <form id="address-form" action="/driver/update-address" method="POST">
+          <div class="form-group">
+            <label for="road-name">Road Name</label>
+            <input type="text" id="road-name" name="road_name" value="{{ driver.road_name }}" required>
+          </div>
+          <div class="form-group">
+            <label for="number">Number</label>
+            <input type="text" id="number" name="number" value="{{ driver.number }}" required>
+          </div>
+          <div class="form-group">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" value="{{ driver.city }}" required>
+          </div>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">Update Address</button>
+        </form>
+      </div>
+
+      <!-- Car Models You Can Drive -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Car Models You Can Drive</h3>
+          <span class="card-icon">🚗</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>Color</th>
+                <th>Year</th>
+                <th>Transmission</th>
+              </tr>
+            </thead>
+            <tbody id="my-models-list">
+              {% for model in driver_models %}
+              <tr>
+                <td>{{ model.car.brand }}</td>
+                <td>{{ model.model_id }}</td>
+                <td>{{ model.color }}</td>
+                <td>{{ model.construction_year }}</td>
+                <td>{{ model.transmission }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Car Models Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">All Available Car Models</h3>
+        <span class="card-icon">🚖</span>
+      </div>
+      <p>Select the car models you can drive:</p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Brand</th>
+              <th>Model</th>
+              <th>Color</th>
+              <th>Year</th>
+              <th>Transmission</th>
+              <th>Can Drive</th>
+            </tr>
+          </thead>
+          <tbody id="all-models-list">
+            {% for model in all_models %}
+            <tr>
+              <td>{{ model.car.brand }}</td>
+              <td>{{ model.model_id }}</td>
+              <td>{{ model.color }}</td>
+              <td>{{ model.construction_year }}</td>
+              <td>{{ model.transmission }}</td>
+              <td>
+                <div class="checkbox-container">
+                  <input type="checkbox" id="model-{{ model.model_id }}-{{ model.CarID }}" 
+                         class="can-drive-checkbox" 
+                         data-model-id="{{ model.model_id }}" 
+                         data-car-id="{{ model.CarID }}"
+                         {% if model in driver_models %}checked{% endif %}>
+                  <label for="model-{{ model.model_id }}-{{ model.CarID }}">I can drive this</label>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 Taxi Rental Management System - CS480 Database Systems Project</p>
+    </div>
+  </footer>
+
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Notification -->
+  <div id="notification" class="notification">
+    Notification message
+  </div>
+
+  <script>
+    // Function to get CSRF token from meta tag
+    function getCSRFToken() {
+      return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+    
+    // Loading spinner
+    function showLoading() {
+      document.getElementById('loading').classList.add('active');
+    }
+    
+    function hideLoading() {
+      document.getElementById('loading').classList.remove('active');
+    }
+    
+    // Notification system
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      
+      if (isError) {
+        notification.classList.add('error');
+      } else {
+        notification.classList.remove('error');
+      }
+      
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Update address form submission
+      document.getElementById('address-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        showLoading();
+        
+        const formData = new FormData(this);
+        
+        fetch('/driver/update-address', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': getCSRFToken()
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to update address');
+          }
+          return response.json();
+        })
+        .then(data => {
+          hideLoading();
+          
+          if (data.success) {
+            showNotification('Address updated successfully!');
+          } else {
+            showNotification(data.message || 'Failed to update address', true);
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showNotification('An error occurred while updating address', true);
+          console.error('Error:', error);
+        });
+      });
+      
+      // Handle can drive checkbox changes
+      const canDriveCheckboxes = document.querySelectorAll('.can-drive-checkbox');
+      
+      canDriveCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          showLoading();
+          
+          const modelId = this.dataset.modelId;
+          const carId = this.dataset.carId;
+          const canDrive = this.checked;
+          
+          const endpoint = canDrive ? '/driver/add-model' : '/driver/remove-model';
+          
+          fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+              model_id: modelId,
+              car_id: carId
+            }),
+            credentials: 'same-origin'
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to update model');
+            }
+            return response.json();
+          })
+          .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+              showNotification(canDrive 
+                ? 'Added to cars you can drive!' 
+                : 'Removed from cars you can drive!');
+            } else {
+              this.checked = !canDrive; // Revert checkbox state
+              showNotification(data.message || 'Failed to update model', true);
+            }
+          })
+          .catch(error => {
+            hideLoading();
+            this.checked = !canDrive; // Revert checkbox state
+            showNotification('An error occurred while updating model', true);
+            console.error('Error:', error);
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>

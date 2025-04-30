@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manager Dashboard - Taxi Rental System</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/manager_dashboard.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <i class="fas fa-taxi fa-2x"></i>
+      <h1>Taxi Rental System</h1>
+    </div>
+    <div class="user-info">
+      <div class="user-icon">
+        <i class="fas fa-user"></i>
+      </div>
+      <p>Welcome, {{ current_user.user_obj.name }}</p>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </header>
+
+  <!-- Mobile sidebar toggle -->
+  <button class="sidebar-toggle" id="sidebarToggle">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <!-- Main content -->
+  <main>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="nav-item active" data-section="dashboard">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-section="cars">
+        <i class="fas fa-car"></i>
+        <span>Manage Cars</span>
+      </div>
+      <div class="nav-item" data-section="drivers">
+        <i class="fas fa-id-card"></i>
+        <span>Manage Drivers</span>
+      </div>
+      <div class="nav-item" data-section="top-clients">
+        <i class="fas fa-users"></i>
+        <span>Top Clients</span>
+      </div>
+      <div class="nav-item" data-section="car-rentals">
+        <i class="fas fa-chart-bar"></i>
+        <span>Car Rental Stats</span>
+      </div>
+      <div class="nav-item" data-section="driver-stats">
+        <i class="fas fa-star"></i>
+        <span>Driver Stats</span>
+      </div>
+      <div class="nav-item" data-section="client-search">
+        <i class="fas fa-search"></i>
+        <span>Client Search</span>
+      </div>
+    </nav>
+
+    <!-- Content area -->
+    <div class="content" id="content">
+      <!-- Dashboard section -->
+      <section class="dashboard-section active" id="dashboard">
+        <h2 class="section-title">Dashboard</h2>
+        <div class="dashboard-cards">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Total Cars</h3>
+              <div class="card-icon">
+                <i class="fas fa-car"></i>
+              </div>
+            </div>
+            <div class="card-content">{{ total_cars }}</div>
+            <div class="card-footer">
+              <span>Available Models: {{ total_models }}</span>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Total Drivers</h3>
+              <div class="card-icon">
+                <i class="fas fa-id-card"></i>
+              </div>
+            </div>
+            <div class="card-content">{{ total_drivers }}</div>
+            <div class="card-footer">
+              <span>Average Rating: {{ avg_driver_rating }}/5</span>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Total Rentals</h3>
+              <div class="card-icon">
+                <i class="fas fa-clipboard-list"></i>
+              </div>
+            </div>
+            <div class="card-content">{{ total_rentals }}</div>
+            <div class="card-footer">
+              <span>Last Month: {{ last_month_rentals }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Quick Actions</h3>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+            <button class="btn" onclick="changeSection('cars')">
+              <i class="fas fa-car"></i> Manage Cars
+            </button>
+            <button class="btn" onclick="changeSection('drivers')">
+              <i class="fas fa-id-card"></i> Manage Drivers
+            </button>
+            <button class="btn" onclick="changeSection('top-clients')">
+              <i class="fas fa-users"></i> View Top Clients
+            </button>
+            <button class="btn" onclick="changeSection('car-rentals')">
+              <i class="fas fa-chart-bar"></i> Car Rental Stats
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cars section -->
+      <section class="dashboard-section" id="cars">
+        <h2 class="section-title">Manage Cars</h2>
+        <div class="search-container">
+          <input type="text" id="carSearch" class="search-input" placeholder="Search cars...">
+          <select class="filter-select" id="carFilter">
+            <option value="">All Brands</option>
+            {% for brand in car_brands %}
+            <option value="{{ brand }}">{{ brand }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" onclick="openModal('add-car-modal')">
+            <i class="fas fa-plus"></i> Add New Car
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Car ID</th>
+                <th>Brand</th>
+                <th>Models</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="carsTableBody">
+              {% for car in cars %}
+              <tr>
+                <td>{{ car.CarID }}</td>
+                <td>{{ car.brand }}</td>
+                <td>{{ car.models|length }}</td>
+                <td>
+                  <button class="action-btn" onclick="openViewModelsModal('{{ car.CarID }}')">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="action-btn" onclick="openAddModelModal('{{ car.CarID }}')">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                  <button class="action-btn delete" onclick="confirmDeleteCar('{{ car.CarID }}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Drivers section -->
+      <section class="dashboard-section" id="drivers">
+        <h2 class="section-title">Manage Drivers</h2>
+        <div class="search-container">
+          <input type="text" id="driverSearch" class="search-input" placeholder="Search drivers...">
+          <select class="filter-select" id="driverFilter">
+            <option value="">All Cities</option>
+            {% for city in driver_cities %}
+            <option value="{{ city }}">{{ city }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" onclick="openModal('add-driver-modal')">
+            <i class="fas fa-plus"></i> Add New Driver
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th>City</th>
+                <th>Car Models</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="driversTableBody">
+              {% for driver in drivers %}
+              <tr>
+                <td>{{ driver.name }}</td>
+                <td>{{ driver.number }} {{ driver.road_name }}</td>
+                <td>{{ driver.city }}</td>
+                <td>{{ driver.models|count }}</td>
+                <td>
+                  <button class="action-btn" onclick="openViewDriverModelsModal('{{ driver.name }}')">
+                    <i class="fas fa-car"></i>
+                  </button>
+                  <button class="action-btn delete" onclick="confirmDeleteDriver('{{ driver.name }}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Top Clients section -->
+      <section class="dashboard-section" id="top-clients">
+        <h2 class="section-title">Top Clients</h2>
+        <div class="search-container">
+          <input type="number" id="topClientCount" class="search-input" placeholder="Number of top clients to display" value="5" min="1" max="100">
+          <button class="btn" onclick="fetchTopClients()">
+            <i class="fas fa-search"></i> Fetch Results
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Total Rentals</th>
+              </tr>
+            </thead>
+            <tbody id="topClientsTableBody">
+     
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Car Rental Stats section -->
+      <section class="dashboard-section" id="car-rentals">
+        <h2 class="section-title">Car Rental Statistics</h2>
+        <div class="search-container">
+          <select class="filter-select" id="carRentalFilter">
+            <option value="">All Brands</option>
+            {% for brand in car_brands %}
+            <option value="{{ brand }}">{{ brand }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" onclick="fetchCarRentalStats()">
+            <i class="fas fa-sync"></i> Refresh Stats
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Car Brand</th>
+                <th>Model</th>
+                <th>Number of Rentals</th>
+                <th>Popularity</th>
+              </tr>
+            </thead>
+            <tbody id="carRentalStatsTableBody">
+
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Driver Stats section -->
+      <section class="dashboard-section" id="driver-stats">
+        <h2 class="section-title">Driver Statistics</h2>
+        <div class="search-container">
+          <input type="text" id="driverStatsSearch" class="search-input" placeholder="Search drivers...">
+          <button class="btn" onclick="fetchDriverStats()">
+            <i class="fas fa-sync"></i> Refresh Stats
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Driver Name</th>
+                <th>Total Rentals</th>
+                <th>Average Rating</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="driverStatsTableBody">
+      
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Client Search section -->
+      <section class="dashboard-section" id="client-search">
+        <h2 class="section-title">Client Search by Cities</h2>
+        <p>Find clients who have an address in City 1 and have booked a ride with a driver from City 2</p>
+        
+        <form class="city-search-form" id="citySearchForm">
+          <div class="form-group">
+            <label for="cityClient">Client City</label>
+            <select id="cityClient" class="form-control" required>
+              <option value="">Select Client City</option>
+              {% for city in all_cities %}
+              <option value="{{ city }}">{{ city }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="cityDriver">Driver City</label>
+            <select id="cityDriver" class="form-control" required>
+              <option value="">Select Driver City</option>
+              {% for city in all_cities %}
+              <option value="{{ city }}">{{ city }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <button type="submit" class="btn">
+              <i class="fas fa-search"></i> Search
+            </button>
+          </div>
+        </form>
+        
+        <div class="table-container">
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Client Name</th>
+                <th>Email</th>
+                <th>Address in {{ '{{' }} selectedCity1 {{ '}}' }}</th>
+                <th>Rides with drivers from {{ '{{' }} selectedCity2 {{ '}}' }}</th>
+              </tr>
+            </thead>
+            <tbody id="clientSearchTableBody">
+       
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modals -->
+  <!-- Add Car Modal -->
+  <div class="modal-overlay" id="add-car-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add New Car</h3>
+        <button class="close-modal" onclick="closeModal('add-car-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addCarForm">
+          <div class="form-group">
+            <label for="carBrand">Brand</label>
+            <input type="text" id="carBrand" name="brand" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" onclick="closeModal('add-car-modal')">Cancel</button>
+            <button type="submit" class="btn btn-success">Add Car</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Model Modal -->
+  <div class="modal-overlay" id="add-model-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add New Model</h3>
+        <button class="close-modal" onclick="closeModal('add-model-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addModelForm">
+          <input type="hidden" id="modelCarId" name="car_id">
+          <div class="form-group">
+            <label for="modelColor">Color</label>
+            <input type="text" id="modelColor" name="color" required>
+          </div>
+          <div class="form-group">
+            <label for="modelYear">Construction Year</label>
+            <input type="number" id="modelYear" name="construction_year" required min="1950" max="2025">
+          </div>
+          <div class="form-group">
+            <label for="modelTransmission">Transmission</label>
+            <select id="modelTransmission" name="transmission" required>
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+              <option value="Semi-automatic">Semi-automatic</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" onclick="closeModal('add-model-modal')">Cancel</button>
+            <button type="submit" class="btn btn-success">Add Model</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Car Models Modal -->
+  <div class="modal-overlay" id="view-models-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Car Models</h3>
+        <button class="close-modal" onclick="closeModal('view-models-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Model ID</th>
+                <th>Color</th>
+                <th>Year</th>
+                <th>Transmission</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="viewModelsTableBody">
+         
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('view-models-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Driver Modal -->
+  <div class="modal-overlay" id="add-driver-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add New Driver</h3>
+        <button class="close-modal" onclick="closeModal('add-driver-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addDriverForm">
+          <div class="form-group">
+            <label for="driverName">Name</label>
+            <input type="text" id="driverName" name="name" required>
+          </div>
+          <div class="form-group">
+            <label for="driverRoadName">Road Name</label>
+            <input type="text" id="driverRoadName" name="road_name" required>
+          </div>
+          <div class="form-group">
+            <label for="driverNumber">Street Number</label>
+            <input type="text" id="driverNumber" name="number" required>
+          </div>
+          <div class="form-group">
+            <label for="driverCity">City</label>
+            <input type="text" id="driverCity" name="city" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" onclick="closeModal('add-driver-modal')">Cancel</button>
+            <button type="submit" class="btn btn-success">Add Driver</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Driver Models Modal -->
+  <div class="modal-overlay" id="view-driver-models-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Driver's Car Models</h3>
+        <button class="close-modal" onclick="closeModal('view-driver-models-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Brand</th>
+                <th>Model ID</th>
+                <th>Color</th>
+                <th>Year</th>
+                <th>Transmission</th>
+              </tr>
+            </thead>
+            <tbody id="viewDriverModelsTableBody">
+           
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top: 1rem;">
+          <h4>Add Car Model to Driver</h4>
+          <form id="addDriverModelForm">
+            <input type="hidden" id="driverModelName" name="driver_name">
+            <div class="form-group">
+              <label for="availableModels">Available Car Models</label>
+              <select id="availableModels" name="model_car_id" required>
+    
+              </select>
+            </div>
+            <button type="submit" class="btn btn-success">Add Model to Driver</button>
+          </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('view-driver-models-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="delete-confirm-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Confirm Deletion</h3>
+        <button class="close-modal" onclick="closeModal('delete-confirm-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="delete-confirm-message">Are you sure you want to delete this item?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('delete-confirm-modal')">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    // CSRF token for AJAX requests
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set up event listeners for sidebar navigation
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        item.addEventListener('click', function() {
+          const sectionId = this.getAttribute('data-section');
+          changeSection(sectionId);
+        });
+      });
+      
+      document.getElementById('sidebarToggle').addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('active');
+      });
+      
+      // Form submissions
+      document.getElementById('addCarForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addCar();
+      });
+      
+      document.getElementById('addModelForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addModel();
+      });
+      
+      document.getElementById('addDriverForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addDriver();
+      });
+      
+      document.getElementById('addDriverModelForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addDriverModel();
+      });
+      
+      document.getElementById('citySearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        searchClientsByCity();
+      });
+      
+      // Initial data loads
+      fetchCarRentalStats();
+      fetchDriverStats();
+    });
+    
+    // Change active section
+    function changeSection(sectionId) {
+      // Update sidebar active state
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        if (item.getAttribute('data-section') === sectionId) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+      
+      // Update visible section
+      const sections = document.querySelectorAll('.dashboard-section');
+      sections.forEach(section => {
+        if (section.id === sectionId) {
+          section.classList.add('active');
+        } else {
+          section.classList.remove('active');
+        }
+      });
+      
+      // Close sidebar on mobile after selecting a section
+      if (window.innerWidth <= 992) {
+        document.getElementById('sidebar').classList.remove('active');
+      }
+    }
+    
+    // Modal functions
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Notification function
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      
+      if (isError) {
+        notification.classList.add('error');
+        notification.classList.remove('success');
+      } else {
+        notification.classList.add('success');
+        notification.classList.remove('error');
+      }
+      
+      notification.classList.add('active');
+      
+      setTimeout(() => {
+        notification.classList.remove('active');
+      }, 3000);
+    }
+    
+    // Car management functions
+    function addCar() {
+      const brand = document.getElementById('carBrand').value;
+      
+      fetch('/manager/cars/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ brand })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showNotification('Car added successfully');
+          closeModal('add-car-modal');
+          // Refresh car list
+          location.reload();
+        } else {
+          showNotification(data.message || 'Failed to add car', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function openAddModelModal(carId) {
+      document.getElementById('modelCarId').value = carId;
+      openModal('add-model-modal');
+    }
+    
+    function addModel() {
+      const carId = document.getElementById('modelCarId').value;
+      const color = document.getElementById('modelColor').value;
+      const constructionYear = document.getElementById('modelYear').value;
+      const transmission = document.getElementById('modelTransmission').value;
+      
+      fetch('/manager/models/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          car_id: carId,
+          color,
+          construction_year: constructionYear,
+          transmission
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showNotification('Model added successfully');
+          closeModal('add-model-modal');
+          // Refresh or update UI
+          location.reload();
+        } else {
+          showNotification(data.message || 'Failed to add model', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function openViewModelsModal(carId) {
+      // Fetch models for the car
+      fetch(`/manager/cars/${carId}/models`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const tableBody = document.getElementById('viewModelsTableBody');
+          tableBody.innerHTML = '';
+          
+          data.models.forEach(model => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${model.model_id}</td>
+              <td>${model.color}</td>
+              <td>${model.construction_year}</td>
+              <td>${model.transmission}</td>
+              <td>
+                <button class="action-btn delete" onclick="confirmDeleteModel(${model.model_id}, ${model.CarID})">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            `;
+            tableBody.appendChild(row);
+          });
+          
+          openModal('view-models-modal');
+        } else {
+          showNotification(data.message || 'Failed to fetch models', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function confirmDeleteCar(carId) {
+      document.getElementById('delete-confirm-message').textContent = `Are you sure you want to delete this car and all its models?`;
+      
+      const deleteBtn = document.getElementById('confirm-delete-btn');
+      deleteBtn.onclick = function() {
+        deleteCar(carId);
+      };
+      
+      openModal('delete-confirm-modal');
+    }
+    
+    function deleteCar(carId) {
+      fetch(`/manager/cars/${carId}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        closeModal('delete-confirm-modal');
+        
+        if (data.success) {
+          showNotification('Car deleted successfully');
+          // Refresh car list
+          location.reload();
+        } else {
+          showNotification(data.message || 'Failed to delete car', true);
+        }
+      })
+      .catch(error => {
+        closeModal('delete-confirm-modal');
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function confirmDeleteModel(modelId, carId) {
+      document.getElementById('delete-confirm-message').textContent = `Are you sure you want to delete this model?`;
+      
+      const deleteBtn = document.getElementById('confirm-delete-btn');
+      deleteBtn.onclick = function() {
+        deleteModel(modelId, carId);
+      };
+      
+      openModal('delete-confirm-modal');
+    }
+    
+    function deleteModel(modelId, carId) {
+      fetch(`/manager/models/${modelId}/${carId}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        closeModal('delete-confirm-modal');
+        
+        if (data.success) {
+          showNotification('Model deleted successfully');
+          // Refresh models list
+          openViewModelsModal(carId);
+        } else {
+          showNotification(data.message || 'Failed to delete model', true);
+        }
+      })
+      .catch(error => {
+        closeModal('delete-confirm-modal');
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    // Driver management functions
+    function addDriver() {
+      const name = document.getElementById('driverName').value;
+      const roadName = document.getElementById('driverRoadName').value;
+      const number = document.getElementById('driverNumber').value;
+      const city = document.getElementById('driverCity').value;
+      
+      fetch('/manager/drivers/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          name,
+          road_name: roadName,
+          number,
+          city
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showNotification('Driver added successfully');
+          closeModal('add-driver-modal');
+          // Refresh driver list
+          location.reload();
+        } else {
+          showNotification(data.message || 'Failed to add driver', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function openViewDriverModelsModal(driverName) {
+      // Set driver name for the form
+      document.getElementById('driverModelName').value = driverName;
+      
+      // Fetch driver's models
+      fetch(`/manager/drivers/${encodeURIComponent(driverName)}/models`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Fill driver models table
+          const tableBody = document.getElementById('viewDriverModelsTableBody');
+          tableBody.innerHTML = '';
+          
+          if (data.models.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="5" style="text-align: center;">No car models assigned to this driver</td>';
+            tableBody.appendChild(row);
+          } else {
+            data.models.forEach(model => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${model.brand}</td>
+                <td>${model.model_id}</td>
+                <td>${model.color}</td>
+                <td>${model.construction_year}</td>
+                <td>${model.transmission}</td>
+              `;
+              tableBody.appendChild(row);
+            });
+          }
+          
+          const modelsSelect = document.getElementById('availableModels');
+          modelsSelect.innerHTML = '';
+          
+          data.available_models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = `${model.model_id}_${model.car_id}`;
+            option.textContent = `${model.brand} - ${model.color} (${model.construction_year}, ${model.transmission})`;
+            modelsSelect.appendChild(option);
+          });
+          
+          openModal('view-driver-models-modal');
+        } else {
+          showNotification(data.message || 'Failed to fetch driver models', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function addDriverModel() {
+      const driverName = document.getElementById('driverModelName').value;
+      const modelCarId = document.getElementById('availableModels').value;
+      const [modelId, carId] = modelCarId.split('_');
+      
+      fetch('/manager/drivers/add_model', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          driver_name: driverName,
+          model_id: modelId,
+          car_id: carId
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showNotification('Model assigned to driver successfully');
+          // Refresh driver models
+          openViewDriverModelsModal(driverName);
+        } else {
+          showNotification(data.message || 'Failed to assign model to driver', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function confirmDeleteDriver(driverName) {
+      document.getElementById('delete-confirm-message').textContent = `Are you sure you want to delete driver "${driverName}"?`;
+      
+      const deleteBtn = document.getElementById('confirm-delete-btn');
+      deleteBtn.onclick = function() {
+        deleteDriver(driverName);
+      };
+      
+      openModal('delete-confirm-modal');
+    }
+    
+    function deleteDriver(driverName) {
+      fetch(`/manager/drivers/${encodeURIComponent(driverName)}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': csrfToken
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        closeModal('delete-confirm-modal');
+        
+        if (data.success) {
+          showNotification('Driver deleted successfully');
+          // Refresh driver list
+          location.reload();
+        } else {
+          showNotification(data.message || 'Failed to delete driver', true);
+        }
+      })
+      .catch(error => {
+        closeModal('delete-confirm-modal');
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    // Statistics and reports functions
+    function fetchTopClients() {
+      const count = document.getElementById('topClientCount').value || 5;
+      
+      fetch(`/manager/top_clients/${count}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const tableBody = document.getElementById('topClientsTableBody');
+          tableBody.innerHTML = '';
+          
+          if (data.clients.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="4" style="text-align: center;">No clients found</td>';
+            tableBody.appendChild(row);
+          } else {
+            data.clients.forEach((client, index) => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${client.name}</td>
+                <td>${client.email}</td>
+                <td>${client.total_rentals}</td>
+              `;
+              tableBody.appendChild(row);
+            });
+          }
+        } else {
+          showNotification(data.message || 'Failed to fetch top clients', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function fetchCarRentalStats() {
+      const brandFilter = document.getElementById('carRentalFilter').value;
+      
+      fetch(`/manager/car_rental_stats${brandFilter ? `?brand=${brandFilter}` : ''}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const tableBody = document.getElementById('carRentalStatsTableBody');
+          tableBody.innerHTML = '';
+          
+          if (data.stats.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="4" style="text-align: center;">No rental statistics found</td>';
+            tableBody.appendChild(row);
+          } else {
+            // Find max rentals for progress bar
+            const maxRentals = Math.max(...data.stats.map(stat => stat.rentals));
+            
+            data.stats.forEach(stat => {
+              const row = document.createElement('tr');
+              const percentage = (stat.rentals / maxRentals) * 100;
+              
+              row.innerHTML = `
+                <td>${stat.brand}</td>
+                <td>${stat.model_id} - ${stat.color} (${stat.year})</td>
+                <td>${stat.rentals}</td>
+                <td>
+                  <div class="stats-bar">
+                    <div class="stats-bar-fill" style="width: ${percentage}%"></div>
+                  </div>
+                </td>
+              `;
+              tableBody.appendChild(row);
+            });
+          }
+        } else {
+          showNotification(data.message || 'Failed to fetch car rental statistics', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function fetchDriverStats() {
+      const searchTerm = document.getElementById('driverStatsSearch').value;
+      
+      fetch(`/manager/driver_stats${searchTerm ? `?search=${searchTerm}` : ''}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const tableBody = document.getElementById('driverStatsTableBody');
+          tableBody.innerHTML = '';
+          
+          if (data.stats.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="4" style="text-align: center;">No driver statistics found</td>';
+            tableBody.appendChild(row);
+          } else {
+            data.stats.forEach(stat => {
+              let stars = '';
+              for (let i = 1; i <= 5; i++) {
+                if (i <= Math.round(stat.avg_rating)) {
+                  stars += '<i class="fas fa-star" style="color: gold;"></i>';
+                } else {
+                  stars += '<i class="far fa-star" style="color: #ccc;"></i>';
+                }
+              }
+              
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${stat.name}</td>
+                <td>${stat.total_rentals}</td>
+                <td>${stars} (${stat.avg_rating.toFixed(1)})</td>
+                <td>
+                  <button class="action-btn" onclick="viewDriverDetails('${stat.name}')">
+                    <i class="fas fa-info-circle"></i>
+                  </button>
+                </td>
+              `;
+              tableBody.appendChild(row);
+            });
+          }
+        } else {
+          showNotification(data.message || 'Failed to fetch driver statistics', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function searchClientsByCity() {
+      const cityClient = document.getElementById('cityClient').value;
+      const cityDriver = document.getElementById('cityDriver').value;
+      
+      // Update the table header
+      document.querySelector('#clientSearchTableBody').closest('table').querySelectorAll('th')[2].textContent = `Address in ${cityClient}`;
+      document.querySelector('#clientSearchTableBody').closest('table').querySelectorAll('th')[3].textContent = `Rides with drivers from ${cityDriver}`;
+      
+      fetch(`/manager/client_search?city_client=${cityClient}&city_driver=${cityDriver}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const tableBody = document.getElementById('clientSearchTableBody');
+          tableBody.innerHTML = '';
+          
+          if (data.clients.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="4" style="text-align: center;">No clients found with address in ${cityClient} who booked drivers from ${cityDriver}</td>`;
+            tableBody.appendChild(row);
+          } else {
+            data.clients.forEach(client => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${client.name}</td>
+                <td>${client.email}</td>
+                <td>${client.address}</td>
+                <td>${client.total_rides}</td>
+              `;
+              tableBody.appendChild(row);
+            });
+          }
+        } else {
+          showNotification(data.message || 'Failed to search clients', true);
+        }
+      })
+      .catch(error => {
+        showNotification('An error occurred', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    function viewDriverDetails(driverName) {
+      openViewDriverModelsModal(driverName);
+    }
+    
+    // Search and filter functions
+    document.addEventListener('DOMContentLoaded', function() {
+      // Car search
+      document.getElementById('carSearch').addEventListener('input', function() {
+        filterTable('carsTableBody', this.value, 1); // Column 1 is Brand
+      });
+      
+      document.getElementById('carFilter').addEventListener('change', function() {
+        filterTable('carsTableBody', this.value, 1); // Column 1 is Brand
+      });
+      
+      // Driver search
+      document.getElementById('driverSearch').addEventListener('input', function() {
+        filterTable('driversTableBody', this.value, 0); // Column 0 is Name
+      });
+      
+      document.getElementById('driverFilter').addEventListener('change', function() {
+        filterTable('driversTableBody', this.value, 2); // Column 2 is City
+      });
+    });
+    
+    function filterTable(tableId, value, columnIndex) {
+      const table = document.getElementById(tableId);
+      const rows = table.getElementsByTagName('tr');
+      
+      value = value.toLowerCase();
+      
+      for (let i = 0; i < rows.length; i++) {
+        const cell = rows[i].getElementsByTagName('td')[columnIndex];
+        if (cell) {
+          const text = cell.textContent || cell.innerText;
+          if (text.toLowerCase().indexOf(value) > -1) {
+            rows[i].style.display = '';
+          } else {
+            rows[i].style.display = 'none';
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
