@@ -55,6 +55,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
+alembic = Alembic(app)
 app.app_context().push()
 
 login_manager = LoginManager(app)
