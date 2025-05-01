@@ -1,0 +1,671 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard - Taxi Rental Management System</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_dashboard.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">
+        <h1>Taxi Rental Management System</h1>
+      </div>
+      <div class="user-info">
+        <div class="avatar">C</div>
+        <span class="user-name">{{ client.name }}</span>
+        <a href="/logout" style="display: inline;">
+            <button type="submit" class="logout-btn">Logout</button>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard-header">
+      <h2 class="dashboard-title">Client Dashboard</h2>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="book-taxi">Book a Taxi</button>
+      <button class="tab-btn" data-tab="my-bookings">My Bookings</button>
+      <button class="tab-btn" data-tab="my-profile">My Profile</button>
+    </div>
+
+    <!-- Book a Taxi Tab -->
+    <div id="book-taxi" class="tab-content active">
+      <!-- Available Cars Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Find Available Car Models</h3>
+          <span class="card-icon">🔍</span>
+        </div>
+        <form id="check-availability-form">
+          <div class="form-group">
+            <label for="rent-date">Select Date</label>
+            <input type="date" id="rent-date" name="rent_date" required min="{{ today_date }}">
+          </div>
+          <button type="submit">Check Availability</button>
+          <div class="checkbox-container">
+            <input type="checkbox" id="best-driver" name="best_driver">
+            <label for="best-driver">Book with the highest-rated available driver</label>
+          </div>
+        </form>
+
+        <div id="available-cars-container" style="display: none; margin-top: 1.5rem;">
+          <h4>Available Car Models</h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Brand</th>
+                  <th>Model</th>
+                  <th>Color</th>
+                  <th>Year</th>
+                  <th>Transmission</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="available-cars-list">
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Bookings Tab -->
+    <div id="my-bookings" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">My Bookings</h3>
+          <span class="card-icon">📅</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Car Brand</th>
+                <th>Car Model</th>
+                <th>Color</th>
+                <th>Driver</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-list">
+              {% for rent in rents %}
+              <tr>
+                <td>{{ rent.rent_date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ rent.model.car.brand }}</td>
+                <td>{{ rent.model_id }}</td>
+                <td>{{ rent.model.color }}</td>
+                <td>{{ rent.driver_name }}</td>
+                <td>
+                  {% if not rent.has_review %}
+                  <button class="action-btn review-btn" onclick="openReviewModal('{{ rent.driver_name }}', {{ rent.rent_id }})">Review Driver</button>
+                  {% else %}
+                  <span class="badge badge-success">Reviewed</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Profile Tab -->
+    <div id="my-profile" class="tab-content">
+      <div class="dashboard-cards">
+        <!-- Addresses Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">My Addresses</h3>
+            <span class="card-icon">📍</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Road Name</th>
+                  <th>Number</th>
+                  <th>City</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for address in addresses %}
+                <tr>
+                  <td>{{ address.road_name }}</td>
+                  <td>{{ address.number }}</td>
+                  <td>{{ address.city }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button class="action-btn" style="margin-top: 1rem;" onclick="openModal('add-address-modal')">Add New Address</button>
+        </div>
+
+        <!-- Credit Cards Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">My Credit Cards</h3>
+            <span class="card-icon">💳</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Card Number</th>
+                  <th>Billing Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for card in credit_cards %}
+                <tr>
+                  <td>{{ card.card_number }}</td>
+                  <td>{{ card.road_name }} {{ card.number }}, {{ card.city }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button class="action-btn" style="margin-top: 1rem;" onclick="openModal('add-card-modal')">Add New Card</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 Taxi Rental Management System - CS480 Database Systems Project</p>
+    </div>
+  </footer>
+
+  <!-- Add Address Modal -->
+  <div id="add-address-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('add-address-modal')">&times;</button>
+      <h3>Add New Address</h3>
+      <form id="add-address-form" action="/client/add-address" method="POST">
+        <div class="form-group">
+          <label for="address-road-name">Road Name</label>
+          <input type="text" id="address-road-name" name="road_name" required>
+        </div>
+        <div class="form-group">
+          <label for="address-number">Number</label>
+          <input type="text" id="address-number" name="number" required>
+        </div>
+        <div class="form-group">
+          <label for="address-city">City</label>
+          <input type="text" id="address-city" name="city" required>
+        </div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Add Address</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Credit Card Modal -->
+  <div id="add-card-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('add-card-modal')">&times;</button>
+      <h3>Add New Credit Card</h3>
+      <form id="add-card-form" action="/client/add-credit-card" method="POST">
+        <div class="form-group">
+          <label for="card-number">Card Number</label>
+          <input type="text" id="card-number" name="card_number" required pattern="[0-9]{16}" title="Please enter a valid 16-digit card number">
+        </div>
+        <div class="form-group">
+          <label for="billing-address">Billing Address</label>
+          <select id="billing-address" name="billing_address" required>
+            <option value="">Select Billing Address</option>
+            {% for address in addresses %}
+            <option value="{{ address.road_name }},{{ address.number }},{{ address.city }}">
+              {{ address.road_name }} {{ address.number }}, {{ address.city }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Add Credit Card</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Review Modal -->
+  <div id="review-modal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal('review-modal')">&times;</button>
+      <h3>Review Driver</h3>
+      <form id="review-form" action="/client/add-review" method="POST">
+        <div class="form-group">
+          <label for="driver-name-review">Driver</label>
+          <input type="text" id="driver-name-review" name="driver_name" readonly>
+        </div>
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="rating">
+            <input type="radio" id="star5" name="rating" value="5" />
+            <label for="star5" title="5 stars"></label>
+            <input type="radio" id="star4" name="rating" value="4" />
+            <label for="star4" title="4 stars"></label>
+            <input type="radio" id="star3" name="rating" value="3" />
+            <label for="star3" title="3 stars"></label>
+            <input type="radio" id="star2" name="rating" value="2" />
+            <label for="star2" title="2 stars"></label>
+            <input type="radio" id="star1" name="rating" value="1" checked />
+            <label for="star1" title="1 star"></label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="review-message">Your Review</label>
+          <textarea id="review-message" name="message" rows="4" placeholder="Write your review here..."></textarea>
+        </div>
+        <input type="hidden" name="rent_id" id="rent-id">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Submit Review</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Notification -->
+  <div id="notification" class="notification">
+    Notification message
+  </div>
+
+  <script>
+    // Function to get CSRF token from meta tag
+    function getCSRFToken() {
+      return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+    
+    // Modal functionality
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Close modal if clicked outside of content
+    window.addEventListener('click', function(event) {
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => {
+        if (event.target === modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = 'auto';
+        }
+      });
+    });
+    
+    // Loading spinner
+    function showLoading() {
+      document.getElementById('loading').classList.add('active');
+    }
+    
+    function hideLoading() {
+      document.getElementById('loading').classList.remove('active');
+    }
+    
+    // Notification system
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      
+      if (isError) {
+        notification.classList.add('error');
+      } else {
+        notification.classList.remove('error');
+      }
+      
+      notification.classList.add('active');
+      
+      setTimeout(() => {
+        notification.classList.remove('active');
+      }, 3000);
+    }
+    
+    // Tab functionality
+    function setupTabs() {
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+      
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabContents.forEach(content => content.classList.remove('active'));
+          
+          button.classList.add('active');
+          const tabId = button.dataset.tab;
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+    }
+    
+    // Open review modal with driver info
+    function openReviewModal(driverName, rentId) {
+      document.getElementById('driver-name-review').value = driverName;
+      document.getElementById('rent-id').value = rentId;
+      openModal('review-modal');
+    }
+    
+    // Book a car
+    function bookCar(modelId, carId, date, useBestDriver = false) {
+      showLoading();
+      
+      fetch('/client/book-rent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+          model_id: modelId,
+          car_id: carId,
+          rent_date: date,
+          best_driver: useBestDriver
+        }),
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to book car');
+        }
+        return response.json();
+      })
+      .then(data => {
+        hideLoading();
+        
+        if (data.success) {
+          showNotification('Car booked successfully!');
+          checkAvailability();
+          loadBookings();
+          document.querySelector('.tab-btn[data-tab="my-bookings"]').click();
+        } else {
+          showNotification(data.message || 'Failed to book car', true);
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showNotification('An error occurred while booking', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    // Check car availability
+    function checkAvailability() {
+      const date = document.getElementById('rent-date').value;
+      const useBestDriver = document.getElementById('best-driver').checked;
+      
+      if (!date) {
+        showNotification('Please select a date', true);
+        return;
+      }
+      
+      showLoading();
+      
+      fetch(`/client/available-cars?date=${date}`, {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        },
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to get available cars');
+        }
+        return response.json();
+      })
+      .then(data => {
+        hideLoading();
+        
+        const container = document.getElementById('available-cars-container');
+        const carsList = document.getElementById('available-cars-list');
+        
+        carsList.innerHTML = '';
+        
+        if (data.cars && data.cars.length > 0) {
+          data.cars.forEach(car => {
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+              <td>${car.brand}</td>
+              <td>${car.model_id}</td>
+              <td>${car.color}</td>
+              <td>${car.year}</td>
+              <td>${car.transmission}</td>
+              <td>
+                <button class="action-btn book-btn" onclick="bookCar(${car.model_id}, ${car.car_id}, '${date}', ${useBestDriver})">
+                  Book Now
+                </button>
+              </td>
+            `;
+            
+            carsList.appendChild(row);
+          });
+          
+          container.style.display = 'block';
+        } else {
+          // No available cars
+          carsList.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center;">No available cars found for this date</td>
+            </tr>
+          `;
+          container.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showNotification('An error occurred while checking availability', true);
+        console.error('Error:', error);
+      });
+    }
+    
+    // Load client's bookings
+    function loadBookings() {
+      fetch('/client/my-rents', {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        },
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to load bookings');
+        }
+        return response.json();
+      })
+      .then(data => {
+        const bookingsList = document.getElementById('bookings-list');
+        
+        bookingsList.innerHTML = '';
+        
+        if (data.rents && data.rents.length > 0) {
+          data.rents.forEach(rent => {
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+              <td>${rent.rent_date}</td>
+              <td>${rent.brand}</td>
+              <td>${rent.model_id}</td>
+              <td>${rent.color}</td>
+              <td>${rent.driver_name}</td>
+              <td>
+                ${!rent.has_review ? 
+                  `<button class="action-btn review-btn" onclick="openReviewModal('${rent.driver_name}', ${rent.rent_id})">Review Driver</button>` : 
+                  '<span class="badge badge-success">Reviewed</span>'}
+              </td>
+            `;
+            
+            bookingsList.appendChild(row);
+          });
+        } else {
+          // No bookings
+          bookingsList.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center;">You have no bookings yet</td>
+            </tr>
+          `;
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    }
+    
+
+    document.addEventListener('DOMContentLoaded', function() {
+      setupTabs();
+      
+      // Check availability form
+      document.getElementById('check-availability-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        checkAvailability();
+      });
+      
+      // Add address form submission
+      document.getElementById('add-address-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        showLoading();
+        
+        const formData = new FormData(this);
+        
+        fetch('/client/add-address', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': getCSRFToken()
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to add address');
+          }
+          return response.json();
+        })
+        .then(data => {
+          hideLoading();
+          
+          if (data.success) {
+            showNotification('Address added successfully!');
+            closeModal('add-address-modal');
+            // Reload the page to show the new address
+            window.location.reload();
+          } else {
+            showNotification(data.message || 'Failed to add address', true);
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showNotification('An error occurred', true);
+          console.error('Error:', error);
+        });
+      });
+      
+      // Add credit card form submission
+      document.getElementById('add-card-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        showLoading();
+        
+        const formData = new FormData(this);
+        
+        fetch('/client/add-credit-card', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': getCSRFToken()
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to add credit card');
+          }
+          return response.json();
+        })
+        .then(data => {
+          hideLoading();
+          
+          if (data.success) {
+            showNotification('Credit card added successfully!');
+            closeModal('add-card-modal');
+            // Reload the page to show the new card
+            window.location.reload();
+          } else {
+            showNotification(data.message || 'Failed to add credit card', true);
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showNotification('An error occurred', true);
+          console.error('Error:', error);
+        });
+      });
+      
+      // Review form submission
+      document.getElementById('review-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        showLoading();
+        
+        const formData = new FormData(this);
+        
+        fetch('/client/add-review', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': getCSRFToken()
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to submit review');
+          }
+          return response.json();
+        })
+        .then(data => {
+          hideLoading();
+          
+          if (data.success) {
+            showNotification('Review submitted successfully!');
+            closeModal('review-modal');
+            loadBookings();
+          } else {
+            showNotification(data.message || 'Failed to submit review', true);
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showNotification('An error occurred', true);
+          console.error('Error:', error);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2c3e50;
+    --accent-color: #e74c3c;
+    --light-color: #ecf0f1;
+    --dark-color: #34495e;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #c0392b;
+    --text-color: #2c3e50;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+  }
+
+  header {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 1rem 0;
+    box-shadow: var(--shadow);
+    width: 100%;
+  }
+
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .logo h1 {
+    font-size: 1.5rem;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--light-color);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+
+  .user-name {
+    margin-right: 15px;
+  }
+
+  .logout-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .logout-btn:hover {
+    background-color: var(--danger-color);
+  }
+
+  main {
+    flex: 1;
+    padding: 2rem 0;
+    width: 100%;
+  }
+
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-title {
+    font-size: 2rem;
+    color: var(--secondary-color);
+  }
+
+  .dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    width: 100%;
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+    width: 100%;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    color: var(--dark-color);
+  }
+
+  .card-icon {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+  }
+
+  button:hover {
+    color:var(--primary-color);
+    background-color: var(--secondary-color);
+  }
+
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+    table-layout: auto;
+  }
+
+  th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+  }
+
+  th {
+    background-color: var(--light-color);
+    font-weight: 600;
+  }
+
+  tr:hover {
+    background-color: #f5f5f5;
+  }
+
+  footer {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 1rem 0;
+    text-align: center;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transform: translateX(120%);
+    transition: var(--transition);
+  }
+
+  .notification.active{
+    border-left: 4px solid var(--success-color);
+    transform: translateX(0);
+  }
+
+  .notification.error {
+    border-left: 4px solid var(--danger-color);
+  }
+
+  /* Modal Styles */
+  .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+  }
+
+  .modal.active {
+      opacity: 1;
+      visibility: visible;
+  }
+
+  .modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+  }
+
+  .loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+
+  .loading.active {
+    display: flex;
+  }
+
+  .spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .action-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    margin-right: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .review-btn {
+    background-color: var(--primary-color);
+  }
+
+  .book-btn {
+    background-color: var(--success-color);
+  }
+
+  .book-best-btn {
+    background-color: var(--warning-color);
+  }
+
+  .rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+  }
+
+  .rating > input {
+    display: none;
+  }
+
+  .rating > label {
+    position: relative;
+    width: 1.1em;
+    font-size: 2rem;
+    color: #FFD700;
+    cursor: pointer;
+  }
+
+  .rating > label::before {
+    content: "\2605";
+    position: absolute;
+    opacity: 0;
+  }
+
+  .rating > label:hover:before,
+  .rating > label:hover ~ label:before {
+    opacity: 1 !important;
+  }
+
+  .rating > input:checked ~ label:before {
+    opacity: 1;
+  }
+
+  .rating:hover > input:checked ~ label:before {
+    opacity: 0.4;
+  }
+
+  .star-rating {
+    color: #FFD700;
+  }
+
+  .tabs {
+    display: flex;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #ddd;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .tab-btn {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: var(--transition);
+    flex: 1;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .tab-btn.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+
+  .tab-content {
+    display: none;
+    width: 100%;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-success {
+    background-color: var(--success-color);
+    color: white;
+  }
+
+  .checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+  }
+
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    header .container {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .user-info {
+      margin-top: 1rem;
+      justify-content: center;
+    }
+
+    .tabs {
+      flex-direction: column;
+    }
+
+    .tab-btn {
+      width: 100%;
+      border-bottom: none;
+      border-left: 3px solid transparent;
+    }
+
+    .tab-btn.active {
+      border-bottom: none;
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .card {
+      padding: 1rem;
+    }
+
+    .dashboard-cards {
+      grid-template-columns: 1fr;
+    }
+
+
+    table, thead, tbody, th, td, tr { 
+      display: block; 
+    }
+    
+    thead tr { 
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+    }
+    
+    tr { border: 1px solid #ccc; margin-bottom: 1rem; }
+    
+    td { 
+
+      border: none;
+      border-bottom: 1px solid #eee; 
+      position: relative;
+      padding-left: 50%; 
+      text-align: right;
+    }
+    
+    td:before { 
+   
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 45%; 
+      padding-right: 10px; 
+      white-space: nowrap;
+      text-align: left;
+      font-weight: bold;
+    }
+    
+
+    #available-cars-list td:nth-of-type(1):before { content: "Brand"; }
+    #available-cars-list td:nth-of-type(2):before { content: "Model"; }
+    #available-cars-list td:nth-of-type(3):before { content: "Color"; }
+    #available-cars-list td:nth-of-type(4):before { content: "Year"; }
+    #available-cars-list td:nth-of-type(5):before { content: "Transmission"; }
+    #available-cars-list td:nth-of-type(6):before { content: "Action"; }
+    
+    #bookings-list td:nth-of-type(1):before { content: "Date"; }
+    #bookings-list td:nth-of-type(2):before { content: "Car Brand"; }
+    #bookings-list td:nth-of-type(3):before { content: "Car Model"; }
+    #bookings-list td:nth-of-type(4):before { content: "Color"; }
+    #bookings-list td:nth-of-type(5):before { content: "Driver"; }
+    #bookings-list td:nth-of-type(6):before { content: "Action"; }
+  }
+
+  @media (max-width: 480px) {
+    .dashboard-title {
+      font-size: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+    }
+
+    button {
+      padding: 0.6rem 1.2rem;
+    }
+
+    .modal-content {
+      padding: 1.5rem;
+    }
+  }
