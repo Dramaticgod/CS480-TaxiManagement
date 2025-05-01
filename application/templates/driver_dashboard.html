@@ -6,9 +6,6 @@
   <title>Driver Dashboard - Taxi Rental Management System</title>
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/driver_dashboard.css') }}">
-  <style>
-    
-  </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
@@ -20,10 +17,9 @@
       <div class="user-info">
         <div class="avatar">D</div>
         <span class="user-name">{{ driver.name }}</span>
-        <form action="/logout" method="POST" style="display: inline;">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <a href="/logout" style="display: inline;">
           <button type="submit" class="logout-btn">Logout</button>
-        </form>
+        </a>
       </div>
     </div>
   </header>
@@ -212,6 +208,7 @@
           
           if (data.success) {
             showNotification('Address updated successfully!');
+            location.reload(); 
           } else {
             showNotification(data.message || 'Failed to update address', true);
           }
@@ -252,6 +249,7 @@
             if (!response.ok) {
               throw new Error('Failed to update model');
             }
+            
             return response.json();
           })
           .then(data => {
@@ -261,6 +259,7 @@
               showNotification(canDrive 
                 ? 'Added to cars you can drive!' 
                 : 'Removed from cars you can drive!');
+                location.reload(); 
             } else {
               this.checked = !canDrive; // Revert checkbox state
               showNotification(data.message || 'Failed to update model', true);
