@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from application import app, db, sha256_crypt, session
 from flask_login import login_user, logout_user, current_user, login_required
 from sqlalchemy import func, and_, desc
+from sqlalchemy.exc import SQLAlchemyError
 from application.models import User, Manager, Client, Driver, Address, Car, Model, Rent, Review, ClientAddress, CreditCard, DriverModel
 
 
@@ -97,7 +98,7 @@ def manager_login():
 @app.route('/client/login', methods=['POST'])
 def client_login():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email').title()
         
         if not email:
             return jsonify({'success': False, 'message': 'Email is required'})
@@ -108,6 +109,8 @@ def client_login():
             # Create a User object and log in
             user = User(client.email, 'client', client)
             login_user(user)
+            session['user_id'] = client.email
+            session['login_time'] = datetime.utcnow().timestamp()
             return jsonify({'success': True, 'redirect': url_for('client_dashboard')})
         else:
             return jsonify({'success': False, 'message': 'Invalid credentials. Please try again.'})
@@ -118,14 +121,13 @@ def client_login():
 @app.route('/driver/login', methods=['POST'])
 def driver_login():
     if request.method == 'POST':
-        name = request.form.get('name')
+        name = request.form.get('name').title()
         
         if not name:
             return jsonify({'success': False, 'message': 'Name is required'})
             
         driver = Driver.query.get(name)
         
-        print(f"Driver: {driver}, the name received is {name}")  # Debugging line to check the driver value
         if driver:
             # Create a User object and log in
             user = User(driver.name, 'driver', driver)
@@ -143,8 +145,8 @@ def driver_login():
 def manager_register():
     if request.method == 'POST':
         ssn = request.form.get('ssn')
-        name = request.form.get('name')
-        email = request.form.get('email')
+        name = request.form.get('name').title()
+        email = request.form.get('email').title()
         
         # Check if manager already exists
         existing_manager = Manager.query.get(ssn)
@@ -169,8 +171,8 @@ def manager_register():
 @app.route('/client/register', methods=['GET', 'POST'])
 def client_register():
     if request.method == 'POST':
-        email = request.form.get('email')
-        name = request.form.get('name')
+        email = request.form.get('email').title()
+        name = request.form.get('name').title()
         
         # Check if client already exists
         existing_client = Client.query.get(email)
@@ -215,7 +217,7 @@ def manager_dashboard():
                             total_cars=total_cars,
                             total_models=total_models,
                             total_drivers=total_drivers,
-                            avg_driver_rating=avg_driver_rating,
+                            avg_driver_rating=round(avg_driver_rating,2),
                             total_rentals=total_rentals,
                             last_month_rentals=last_month_rentals,
                             car_brands=car_brands,
@@ -228,7 +230,7 @@ def manager_dashboard():
 @login_required
 def add_car():
     data = request.json
-    brand = data.get('brand')
+    brand = data.get('brand').title()
 
     if not brand:
         return jsonify({'success': False, 'message': 'Brand is required'})
@@ -248,7 +250,7 @@ def add_car():
 def add_model():
     data = request.json
     car_id = data.get('car_id')
-    color = data.get('color')
+    color = data.get('color').title()
     construction_year = data.get('construction_year')
     transmission = data.get('transmission')
     
@@ -358,10 +360,10 @@ def delete_model(model_id, car_id):
 @login_required
 def add_driver():
     data = request.json
-    name = data.get('name')
-    road_name = data.get('road_name')
-    number = data.get('number')
-    city = data.get('city')
+    name = data.get('name').title()
+    road_name = data.get('road_name').title()
+    number = data.get('number').title()
+    city = data.get('city').title()
     
     if not all([name, road_name, number, city]):
         return jsonify({'success': False, 'message': 'All fields are required'})
@@ -474,9 +476,9 @@ def get_driver_models(driver_name):
 @login_required
 def add_driver_model():
     data = request.json
-    driver_name = data.get('driver_name')
-    model_id = data.get('model_id')
-    car_id = data.get('car_id')
+    driver_name = data.get('driver_name').title()
+    model_id = data.get('model_id').title()
+    car_id = data.get('car_id').title()
     
     if not all([driver_name, model_id, car_id]):
         return jsonify({'success': False, 'message': 'All fields are required'})
@@ -640,7 +642,6 @@ def get_driver_stats():
             desc('total_rentals')
         )
         
-        # Apply search filter if provided
         if search_term:
             query = query.filter(Driver.name.ilike(f'%{search_term}%'))
         
@@ -659,15 +660,428 @@ def get_driver_stats():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
-
 @app.route('/client/dashboard')
 @login_required
 def client_dashboard():
     if current_user.role != 'client':
-        flash('Access denied.')
-        return redirect(url_for('home'))
+        return redirect(url_for('login'))
     
-    return render_template('client_dashboard.html')
+    client = current_user.user_obj
+    
+    # Get addresses
+    addresses = db.session.query(Address).join(
+        ClientAddress, 
+        (ClientAddress.road_name == Address.road_name) & 
+        (ClientAddress.number == Address.number) & 
+        (ClientAddress.city == Address.city)
+    ).filter(ClientAddress.client_email == client.email).all()
+    
+    # Get credit cards
+    credit_cards = CreditCard.query.filter_by(client_email=client.email).all()
+    
+    # Get rents/bookings
+    rents = Rent.query.filter_by(client_email=client.email).all()
+    
+    # Process rents to include car information and review status
+    for rent in rents:
+        # Check if this rent has a review
+        rent.has_review = Review.query.filter_by(
+            client_email=client.email,
+            driver_name=rent.driver_name
+        ).first() is not None
+    
+    return render_template('client_dashboard.html', 
+                           client=client,
+                           addresses=addresses,
+                           credit_cards=credit_cards,
+                           rents=rents,
+                           today_date=datetime.today().strftime('%Y-%m-%d'))
+
+@app.route('/client/available-cars', methods=['GET'])
+@login_required
+def available_cars():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    rent_date_str = request.args.get('date')
+    
+    try:
+        rent_date = datetime.strptime(rent_date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid date format'}), 400
+    
+    # Get all models
+    available_cars = []
+    
+    try:
+        # Find models with available cars on the specified date
+        # 1. Gets all models
+        # 2. Checks if the model has at least one driver qualified to drive it
+        # 3. Checks if the model is not already rented on the specified date
+        
+        subquery = db.session.query(Rent.model_id, Rent.car_id).\
+            filter(Rent.rent_date == rent_date).subquery()
+        
+        available_models = db.session.query(
+            Model.model_id,
+            Model.CarID,
+            Car.brand,
+            Model.color,
+            Model.construction_year,
+            Model.transmission
+        ).join(Car).\
+        join(DriverModel, (DriverModel.model_id == Model.model_id) & 
+                          (DriverModel.car_id == Model.CarID)).\
+        outerjoin(subquery, (subquery.c.model_id == Model.model_id) & 
+                           (subquery.c.car_id == Model.CarID)).\
+        filter(subquery.c.model_id.is_(None)).\
+        distinct().all()
+        
+        for model in available_models:
+            available_cars.append({
+                'model_id': model.model_id,
+                'car_id': model.CarID,
+                'brand': model.brand,
+                'color': model.color,
+                'year': model.construction_year,
+                'transmission': model.transmission
+            })
+        
+        return jsonify({'cars': available_cars})
+    
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+@app.route('/client/my-rents', methods=['GET'])
+@login_required
+def my_rents():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    client = current_user.user_obj
+    
+    try:
+        # Get all rents with related information
+        rents_data = db.session.query(
+            Rent.rent_id,
+            Rent.rent_date,
+            Rent.driver_name,
+            Rent.model_id,
+            Car.brand,
+            Model.color
+        ).join(Model, (Model.model_id == Rent.model_id) & (Model.CarID == Rent.car_id)).\
+        join(Car, Car.CarID == Model.CarID).\
+        filter(Rent.client_email == client.email).\
+        order_by(Rent.rent_date.desc()).\
+        all()
+        
+      
+        rents = []
+        for rent in rents_data:
+            # Check if this rent has a review
+            has_review = Review.query.filter_by(
+                client_email=client.email,
+                driver_name=rent.driver_name
+            ).first() is not None
+            
+            rents.append({
+                'rent_id': rent.rent_id,
+                'rent_date': rent.rent_date.strftime('%Y-%m-%d') if rent.rent_date else None,
+                'driver_name': rent.driver_name,
+                'model_id': rent.model_id,
+                'brand': rent.brand,
+                'color': rent.color,
+                'has_review': has_review
+            })
+        
+        return jsonify({'rents': rents})
+        
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+@app.route('/client/add-address', methods=['POST'])
+@login_required
+def add_address():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    client = current_user.user_obj
+    
+    road_name = request.form.get('road_name').title()
+    number = request.form.get('number')
+    city = request.form.get('city').title()
+    
+    if not road_name or not number or not city:
+        return jsonify({'success': False, 'message': 'All address fields are required'}), 400
+    
+    try:
+
+        address = Address.query.filter_by(
+            road_name=road_name,
+            number=number,
+            city=city
+        ).first()
+        
+        if not address:
+            address = Address(
+                road_name=road_name,
+                number=number,
+                city=city
+            )
+            db.session.add(address)
+        
+        existing_client_address = ClientAddress.query.filter_by(
+            client_email=client.email,
+            road_name=road_name,
+            number=number,
+            city=city
+        ).first()
+        
+        if existing_client_address:
+            return jsonify({'success': False, 'message': 'You already have this address'}), 400
+        
+        client_address = ClientAddress(
+            client_email=client.email,
+            road_name=road_name,
+            number=number,
+            city=city
+        )
+        
+        db.session.add(client_address)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+        
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    except Exception as e:
+        db.session.rollback()
+        print(f"Unexpected error: {e}")
+        return jsonify({'success': False, 'message': 'An unexpected error occurred'}), 500
+
+@app.route('/client/add-credit-card', methods=['POST'])
+@login_required
+def add_credit_card():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    client = current_user.user_obj
+    
+    card_number = request.form.get('card_number')
+    billing_address = request.form.get('billing_address')
+    
+    if not card_number or not billing_address:
+        return jsonify({'success': False, 'message': 'Card number and billing address are required'}), 400
+    
+    try:
+        address_parts = billing_address.split(',')
+        if len(address_parts) != 3:
+            return jsonify({'success': False, 'message': 'Invalid billing address format'}), 400
+        
+        road_name, number, city = address_parts
+        
+
+        client_address = ClientAddress.query.filter_by(
+            client_email=client.email,
+            road_name=road_name,
+            number=number,
+            city=city
+        ).first()
+        
+        if not client_address:
+            return jsonify({'success': False, 'message': 'Invalid billing address'}), 400
+        
+        # Check if card already exists
+        existing_card = CreditCard.query.filter_by(card_number=card_number).first()
+        if existing_card:
+            return jsonify({'success': False, 'message': 'This credit card already exists'}), 400
+        
+        # Create new credit card
+        credit_card = CreditCard(
+            card_number=card_number,
+            client_email=client.email,
+            road_name=road_name,
+            number=number,
+            city=city
+        )
+        
+        db.session.add(credit_card)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+        
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    except Exception as e:
+        db.session.rollback()
+        print(f"Unexpected error: {e}")
+        return jsonify({'success': False, 'message': 'An unexpected error occurred'}), 500
+
+@app.route('/client/add-review', methods=['POST'])
+@login_required
+def add_review():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    client = current_user.user_obj
+    
+    driver_name = request.form.get('driver_name')
+    rating = request.form.get('rating')
+    message = request.form.get('message')
+    rent_id = request.form.get('rent_id')
+    
+    if not driver_name or not rating or not rent_id:
+        return jsonify({'success': False, 'message': 'Driver name, rating, and rent ID are required'}), 400
+    
+
+    try:
+        rating = int(rating)
+        if rating < 1 or rating > 5:
+            return jsonify({'success': False, 'message': 'Rating must be between 1 and 5'}), 400
+        
+        # Verify the rent exists and belongs to this client and driver
+        rent = Rent.query.filter_by(
+            rent_id=rent_id,
+            client_email=client.email,
+            driver_name=driver_name
+        ).first()
+        
+        if not rent:
+            return jsonify({'success': False, 'message': 'Invalid rent ID or driver'}), 400
+        
+        # Check if review already exists
+        existing_review = Review.query.filter_by(
+            client_email=client.email,
+            driver_name=driver_name
+        ).first()
+        
+        if existing_review:
+            return jsonify({'success': False, 'message': 'You have already reviewed this driver'}), 400
+        
+        max_review_id = db.session.query(func.max(Review.review_id)).scalar() or 0
+        # Create new review
+        review = Review(
+            review_id=max_review_id + 1,
+            driver_name=driver_name,
+            client_email=client.email,
+            rating=rating,
+            message=message
+        )
+        
+        db.session.add(review)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+        
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid rating value'}), 400
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    except Exception as e:
+        db.session.rollback()
+        print(f"Unexpected error: {e}")
+        return jsonify({'success': False, 'message': 'An unexpected error occurred'}), 500
+
+@app.route('/client/book-rent', methods=['POST'])
+@login_required
+def book_rent():
+    if current_user.role != 'client':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    client = current_user.user_obj
+    data = request.json
+    
+    model_id = data.get('model_id')
+    car_id = data.get('car_id')
+    rent_date_str = data.get('rent_date')
+    best_driver = data.get('best_driver', False)
+    
+    try:
+        rent_date = datetime.strptime(rent_date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'Invalid date format'}), 400
+    
+    # Check if the model is available on this date
+    existing_rent = Rent.query.filter_by(
+        model_id=model_id,
+        car_id=car_id,
+        rent_date=rent_date
+    ).first()
+    
+    if existing_rent:
+        return jsonify({'success': False, 'message': 'This car is no longer available for the selected date'}), 400
+    
+    try:
+        # ATTEMPT FOR 4 PERSON GROUP
+        if best_driver:
+            # Find the highest-rated driver for this model
+            driver_query = db.session.query(
+                Driver.name,
+                func.avg(Review.rating).label('avg_rating')
+            ).outerjoin(Review).\
+            join(DriverModel, DriverModel.driver_name == Driver.name).\
+            filter(
+                DriverModel.model_id == model_id,
+                DriverModel.car_id == car_id
+            ).\
+            group_by(Driver.name).\
+            order_by(desc('avg_rating')).\
+            first()
+            
+            if not driver_query or not driver_query.name:
+                return jsonify({'success': False, 'message': 'No qualified drivers available for this model'}), 400
+            
+            driver_name = driver_query.name
+        else:
+            # Just get any qualified driver
+            driver_model = DriverModel.query.filter_by(
+                model_id=model_id,
+                car_id=car_id
+            ).first()
+            
+            if not driver_model:
+                return jsonify({'success': False, 'message': 'No qualified drivers available for this model'}), 400
+            
+            driver_name = driver_model.driver_name
+        
+        # Create the new rent record
+        max_rent_id = db.session.query(func.max(Rent.rent_id)).scalar() or 0
+        new_rent = Rent(
+            rent_id=max_rent_id + 1,
+            rent_date=rent_date,
+            client_email=client.email,
+            driver_name=driver_name,
+            model_id=model_id,
+            car_id=car_id
+        )
+        
+        db.session.add(new_rent)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'rent_id': new_rent.rent_id})
+        
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    except Exception as e:
+        db.session.rollback()
+        print(f"Unexpected error: {e}")
+        return jsonify({'success': False, 'message': 'An unexpected error occurred'}), 500
 
 @app.route('/driver/dashboard')
 @login_required
@@ -676,8 +1090,129 @@ def driver_dashboard():
     if current_user.role != 'driver':
         flash('Access denied.')
         return redirect(url_for('home'))
+    # Get the driver's models they can drive
+    driver_models = (
+        Model.query
+        .join(DriverModel, and_(Model.model_id == DriverModel.model_id, Model.CarID == DriverModel.car_id))
+        .filter(DriverModel.driver_name == current_user.user_obj.name)
+        .all()
+    )
     
-    return render_template('driver_dashboard.html', driver=driver)
+    # Get all car models
+    all_models = Model.query.all()
+    
+    return render_template(
+        "driver_dashboard.html", 
+        driver=current_user.user_obj,
+        driver_models=driver_models,
+        all_models=all_models
+    )
+
+@app.route("/driver/update-address", methods=["POST"])
+@login_required
+def update_driver_address():
+    if current_user.role != "driver":
+        return jsonify({"success": False, "message": "Access denied."})
+    
+    try:
+        road_name = request.form.get("road_name")
+        number = request.form.get("number")
+        city = request.form.get("city")
+        
+        if not all([road_name, number, city]):
+            return jsonify({"success": False, "message": "All address fields are required."})
+        
+        # Check if address exists, if not create it
+        address = Address.query.filter_by(road_name=road_name, number=number, city=city).first()
+        if not address:
+            address = Address(road_name=road_name, number=number, city=city)
+            db.session.add(address)
+            db.session.commit()
+        
+        # Update driver's address
+        driver = current_user.user_obj
+        driver.road_name = road_name
+        driver.number = number
+        driver.city = city
+        db.session.commit()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating driver address: {str(e)}")
+        return jsonify({"success": False, "message": "An error occurred. Please try again."})
+
+@app.route("/driver/add-model", methods=["POST"])
+@login_required
+def _add_driver_model():
+    if current_user.role != "driver":
+        return jsonify({"success": False, "message": "Access denied."})
+    
+    try:
+        data = request.json
+        model_id = data.get("model_id")
+        car_id = data.get("car_id")
+        
+        if not all([model_id, car_id]):
+            return jsonify({"success": False, "message": "Model ID and Car ID are required."})
+        
+        # Check if driver-model relation exists
+        driver_model = DriverModel.query.filter_by(
+            driver_name=current_user.user_obj.name,
+            model_id=model_id,
+            car_id=car_id
+        ).first()
+        
+        if driver_model:
+            return jsonify({"success": False, "message": "You already declared you can drive this model."})
+        
+        # Add new driver-model relation
+        new_driver_model = DriverModel(
+            driver_name=current_user.user_obj.name,
+            model_id=model_id,
+            car_id=car_id
+        )
+        db.session.add(new_driver_model)
+        db.session.commit()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error adding driver model: {str(e)}")
+        return jsonify({"success": False, "message": "An error occurred. Please try again."})
+
+@app.route("/driver/remove-model", methods=["POST"])
+@login_required
+def remove_driver_model():
+    if current_user.role != "driver":
+        return jsonify({"success": False, "message": "Access denied."})
+    
+    try:
+        data = request.json
+        model_id = data.get("model_id")
+        car_id = data.get("car_id")
+        
+        if not all([model_id, car_id]):
+            return jsonify({"success": False, "message": "Model ID and Car ID are required."})
+        
+        # Find and delete driver-model relation
+        driver_model = DriverModel.query.filter_by(
+            driver_name=current_user.user_obj.name,
+            model_id=model_id,
+            car_id=car_id
+        ).first()
+        
+        if not driver_model:
+            return jsonify({"success": False, "message": "You haven't declared you can drive this model."})
+        
+        db.session.delete(driver_model)
+        db.session.commit()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error removing driver model: {str(e)}")
+        return jsonify({"success": False, "message": "An error occurred. Please try again."})
 
 # Logout route
 @app.route('/logout')
