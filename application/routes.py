@@ -201,7 +201,7 @@ def manager_dashboard():
     total_cars = db.session.query(Car).count()
     total_models = db.session.query(Model).count()
     total_drivers = db.session.query(Driver).count()
-    avg_driver_rating = db.session.query(func.avg(Review.rating)).scalar() or 5
+    avg_driver_rating = db.session.query(func.avg(Review.rating)).scalar() or 5.0
     total_rentals = db.session.query(Rent).count()
     last_month_rentals = db.session.query(Rent).filter(Rent.rent_date >= datetime.now() - timedelta(days=30)).count()
     car_brands = db.session.query(Car.brand).distinct().all()
@@ -561,7 +561,7 @@ def get_top_clients(count):
         clients_data = [
             {
                 'name': client[0],
-                'email': client[1],
+                'email': client[1].lower(),
                 'total_rentals': client[2]
             }
             for client in top_clients
@@ -659,6 +659,33 @@ def get_driver_stats():
         return jsonify({'success': True, 'stats': stats_data})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/manager/client_search')
+@login_required
+def client_search():
+
+    city_client = request.args.get('city_client', '')
+    city_driver = request.args.get('city_driver', '')
+
+    client = db.session.query(Client).join(ClientAddress).filter(
+        ClientAddress.city == city_client
+    ).all()
+
+    driver = db.session.query(Driver).join(DriverModel).join(Rent).filter(
+        Driver.city == city_driver
+    ).all()
+
+    merge = db.session.query(Client, func.count(Rent.rent_id).label('total_rides')).join(
+        Rent, Client.email == Rent.client_email
+    ).filter(
+        Rent.driver_name == Driver.name,
+        Driver.city == city_driver
+    ).group_by(Client.email).distinct().all()
+
+    return jsonify({
+        'success': True,
+        'clients': [{'name': c.name, 'email': c.email.lower(), 'address': f"{ca.road_name} {ca.number}, {ca.city}", 'total_rides': m.total_rides} for c in client for ca in c.addresses for m in merge if m[0].email == c.email]
+    })
 
 @app.route('/client/dashboard')
 @login_required
