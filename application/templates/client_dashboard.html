@@ -654,7 +654,7 @@
           if (data.success) {
             showNotification('Review submitted successfully!');
             closeModal('review-modal');
-            loadBookings();
+            location.reload();
           } else {
             showNotification(data.message || 'Failed to submit review', true);
           }

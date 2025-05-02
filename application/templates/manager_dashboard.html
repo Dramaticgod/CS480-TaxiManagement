@@ -357,8 +357,9 @@
               <tr>
                 <th>Client Name</th>
                 <th>Email</th>
-                <th>Address in {{ '{{' }} NULL {{ '}}' }}</th>
-                <th>Rides with drivers from {{ '{{' }} NULL{{ '}}' }}</th>
+                <th>Address in {{ '{{' }} STATE {{ '}}' }}</th>
+                <th>Rides with drivers from {{ '{{' }} STATE {{ '}}' }}</th>
+                <th>Driver</th>
               </tr>
             </thead>
             <tbody id="clientSearchTableBody">
@@ -1164,6 +1165,7 @@
                 <td>${client.email}</td>
                 <td>${client.address}</td>
                 <td>${client.total_rides}</td>
+                <td>${client.driver_name}</td>
               `;
               tableBody.appendChild(row);
             });

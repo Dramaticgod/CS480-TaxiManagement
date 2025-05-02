@@ -667,24 +667,59 @@ def client_search():
     city_client = request.args.get('city_client', '')
     city_driver = request.args.get('city_driver', '')
 
-    client = db.session.query(Client).join(ClientAddress).filter(
-        ClientAddress.city == city_client
-    ).all()
+    # 1) all clients in the requested client‐city
+    clients = (
+        db.session.query(Client)
+        .join(ClientAddress)
+        .filter(ClientAddress.city == city_client)
+        .all()
+    )
 
-    driver = db.session.query(Driver).join(DriverModel).join(Rent).filter(
-        Driver.city == city_driver
-    ).all()
+    # 2) all drivers in the requested driver‐city (we’ll use this just to check valid city)
+    drivers = (
+        db.session.query(Driver)
+        .filter(Driver.city == city_driver)
+        .all()
+    )
 
-    merge = db.session.query(Client, func.count(Rent.rent_id).label('total_rides')).join(
-        Rent, Client.email == Rent.client_email
-    ).filter(
-        Rent.driver_name == Driver.name,
-        Driver.city == city_driver
-    ).group_by(Client.email).distinct().all()
+    # 3) for each client+driver pair, count how many rents they have together
+    merge = (
+        db.session.query(
+            Client, 
+            Rent.driver_name,
+            func.count(Rent.rent_id).label('total_rides')
+        )
+        .join(Rent, Client.email == Rent.client_email)
+        .join(Driver, Driver.name == Rent.driver_name)
+        .filter(Driver.city == city_driver)
+        .group_by(Client.email, Rent.driver_name)
+        .all()
+    )
+
+    # build a lookup: (client_email, driver_name) -> total_rides
+    rides_lookup = {
+        (client.email, driver_name): total_rides
+        for client, driver_name, total_rides in merge
+    }
+
+    result = []
+    for c in clients:
+        for ca in c.addresses:
+            # for each driver in that city, see if this client rented from them
+            for d in drivers:
+                key = (c.email, d.name)
+                if key in rides_lookup:
+                    result.append({
+                        'name': c.name,
+                        'email': c.email.lower(),
+                        'address': f"{ca.road_name} {ca.number}, {ca.city}",
+                        'driver_name': d.name,
+                        'total_rides': rides_lookup[key]
+                    })
 
     return jsonify({
         'success': True,
-        'clients': [{'name': c.name, 'email': c.email.lower(), 'address': f"{ca.road_name} {ca.number}, {ca.city}", 'total_rides': m.total_rides} for c in client for ca in c.addresses for m in merge if m[0].email == c.email]
+        'clients': result
     })
 
 @app.route('/client/dashboard')
@@ -714,7 +749,8 @@ def client_dashboard():
         # Check if this rent has a review
         rent.has_review = Review.query.filter_by(
             client_email=client.email,
-            driver_name=rent.driver_name
+            driver_name=rent.driver_name,
+            review_id=rent.rent_id
         ).first() is not None
     
     return render_template('client_dashboard.html', 
@@ -812,7 +848,8 @@ def my_rents():
             # Check if this rent has a review
             has_review = Review.query.filter_by(
                 client_email=client.email,
-                driver_name=rent.driver_name
+                driver_name=rent.driver_name,
+                review_id=rent.rent_id
             ).first() is not None
             
             rents.append({
@@ -970,13 +1007,13 @@ def add_review():
     rent_id = request.form.get('rent_id')
     
     if not driver_name or not rating or not rent_id:
-        return jsonify({'success': False, 'message': 'Driver name, rating, and rent ID are required'}), 400
+        return jsonify({'success': False, 'message': 'Driver name, rating, and rent ID are required'})
     
 
     try:
         rating = int(rating)
         if rating < 1 or rating > 5:
-            return jsonify({'success': False, 'message': 'Rating must be between 1 and 5'}), 400
+            return jsonify({'success': False, 'message': 'Rating must be between 1 and 5'})
         
         # Verify the rent exists and belongs to this client and driver
         rent = Rent.query.filter_by(
@@ -986,21 +1023,22 @@ def add_review():
         ).first()
         
         if not rent:
-            return jsonify({'success': False, 'message': 'Invalid rent ID or driver'}), 400
+            return jsonify({'success': False, 'message': 'Invalid rent ID or driver'})
         
         # Check if review already exists
         existing_review = Review.query.filter_by(
             client_email=client.email,
-            driver_name=driver_name
+            driver_name=rent.driver_name,
+            review_id=rent.rent_id
         ).first()
         
         if existing_review:
-            return jsonify({'success': False, 'message': 'You have already reviewed this driver'}), 400
+            return jsonify({'success': False, 'message': 'You have already reviewed this driver'})
         
         max_review_id = db.session.query(func.max(Review.review_id)).scalar() or 0
         # Create new review
         review = Review(
-            review_id=max_review_id + 1,
+            review_id=rent_id,
             driver_name=driver_name,
             client_email=client.email,
             rating=rating,
@@ -1013,15 +1051,15 @@ def add_review():
         return jsonify({'success': True})
         
     except ValueError:
-        return jsonify({'success': False, 'message': 'Invalid rating value'}), 400
+        return jsonify({'success': False, 'message': 'Invalid rating value'})
     except SQLAlchemyError as e:
         db.session.rollback()
         print(f"Database error: {e}")
-        return jsonify({'success': False, 'message': 'Database error'}), 500
+        return jsonify({'success': False, 'message': 'Database error'})
     except Exception as e:
         db.session.rollback()
         print(f"Unexpected error: {e}")
-        return jsonify({'success': False, 'message': 'An unexpected error occurred'}), 500
+        return jsonify({'success': False, 'message': 'An unexpected error occurred'})
 
 @app.route('/client/book-rent', methods=['POST'])
 @login_required
